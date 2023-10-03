@@ -1,0 +1,21 @@
+[Unit]
+Description=Voluspa Scraper
+#Requires=After=mysql.service       # Requires the mysql service to run first
+
+[Service]
+ExecStart=/root/.nvm/versions/node/v18.12.1/bin/node /root/voluspa-scraper-3/scrape.js
+# Required on some systems
+WorkingDirectory=/root/voluspa-scraper-3
+Restart=always
+# Restart service after 10 seconds if node service crashes
+RestartSec=10
+# Output to syslog
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=voluspa-scraper
+#User=<alternate user>
+#Group=<alternate group>
+#Environment=NODE_ENV=production PORT=1337
+
+[Install]
+WantedBy=multi-user.target

@@ -6,7 +6,7 @@ import http from 'http';
 
 dotenv.config();
 
-console.log('VOLUSPA 3');
+console.log('VOLUSPA');
 
 // create the connection to database
 const connection = mysql.createConnection({
@@ -23,7 +23,7 @@ const pond = connection.promise();
 
 // get a list of members to fetch profile data for
 console.log('Querying braytech.members');
-const [members] = await pond.query('SELECT id, membershipType, membershipId FROM braytech.members WHERE NOT isPrivate LIMIT 0, 100');
+const [members] = await pond.query('SELECT id, membershipType, membershipId FROM braytech.members WHERE NOT isPrivate LIMIT 0, 1000000');
 console.log('Results received');
 
 // variables for relaying progress to the console
@@ -56,6 +56,10 @@ function handleSpawnResponse(data) {
     }
 
     results.push(data.Response);
+
+    if (progress === completionValue) {
+      finalise();
+    }
   } else if (data.Message === 'StatsTriumphs') {
     if (StatsTriumphs[data.Response]) {
       StatsTriumphs[data.Response]++;
@@ -72,10 +76,6 @@ function handleSpawnResponse(data) {
     StatsParallelProgram.push(data.Response);
   } else {
     console.log('Spawn sent data:', data);
-  }
-
-  if (progress === completionValue) {
-    finalise();
   }
 }
 
@@ -127,6 +127,8 @@ server.listen(8181, '0.0.0.0', () => {
 });
 
 function report() {
+  console.log(progress, completionValue);
+
   const timeComplete = new Date(Date.now() + ((Date.now() - scrapeStart.getTime()) / Math.max(progress, 1)) * (completionValue - progress));
 
   metrics = `voluspa_scraper_progress ${Math.floor((progress / completionValue) * 100)}\n\nvoluspa_scraper_job_rate ${rate}\n\nvoluspa_scraper_job_progress ${progress}\n\nvoluspa_scraper_job_completion_value ${completionValue}\n\nvoluspa_scraper_job_parallel_programs ${StatsParallelProgram.length}\n\nvoluspa_scraper_job_time_remaining ${Math.max((timeComplete.getTime() - Date.now()) / 1000, 0)}\n\n${Object.keys(errors)

@@ -10,30 +10,6 @@ dotenv.config();
 
 const scrapeStoreResults = process.env.STORE_JOB_RESULTS === 'true';
 
-const queue = new pQueue({ concurrency: 150 });
-
-function addToQueue(members) {
-  members.forEach((member) => {
-    queue.add(() => processJob({ member, retries: 0 }));
-  });
-}
-
-process.on('message', function (data) {
-  if (data.Message === 'Members') {
-    addToQueue(data.Response);
-    process.send({
-      Message: 'Received members - thank you.',
-      Response: data.Response.length,
-    });
-  } else {
-    process.send({
-      Message: 'Hello',
-      Response: null,
-    });
-  }
-});
-
-// setup basic db stuff
 const connection = mysql.createPool({
   host: process.env.MYSQL_HOST,
   port: process.env.MYSQL_PORT,
@@ -49,17 +25,42 @@ const connection = mysql.createPool({
 // make db query async
 const pond = connection.promise();
 
+// setup job queue
+const queue = new pQueue({ concurrency: 12 });
+
+function addToQueue(members) {
+  members.forEach((member) => {
+    queue.add(() => processJob({ member, retries: 0 }));
+  });
+  
+  process.send({
+    Message: 'Received members - thank you.',
+    Response: members.length,
+  });
+}
+
+process.on('message', function (data) {
+  if (data.Message === 'Members') {
+    addToQueue(data.Response);
+  } else {
+    process.send({
+      Message: 'Hello',
+      Response: null,
+    });
+  }
+});
+
 async function processJob({ member, retries }) {
   try {
     const processStart = new Date().toISOString();
 
     const fetchStart = performance.now();
-    const response = await customFetch(`https://www.bungie.net/Platform/Destiny2/${member.membershipType}/Profile/${member.membershipId}/?components=100,800,900`);
-    // const response = await fetch(`https://www.bungie.net/Platform/Destiny2/${member.membershipType}/Profile/${member.membershipId}/?components=100,800,900`, {
-    //   headers: {
-    //     'x-api-key': process.env.BUNGIE_API_KEY,
-    //   },
-    // }).then((request) => request.json());
+    // const response = await customFetch(`https://www.bungie.net/Platform/Destiny2/${member.membershipType}/Profile/${member.membershipId}/?components=100,800,900`);
+    const response = await fetch(`https://www.bungie.net/Platform/Destiny2/${member.membershipType}/Profile/${member.membershipId}/?components=100,800,900`, {
+      headers: {
+        'x-api-key': process.env.BUNGIE_API_KEY,
+      },
+    }).then((request) => request.json());
     const fetchEnd = performance.now();
 
     const computeStart = performance.now();
